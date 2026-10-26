@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Лисьи норы — прототип v1.5</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6efe0;--fg:#2a2019;--cd:#fffaf0;--bd:#b58f4a;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a2019;--fg:#f3e9d2;--cd:#372b22;--bd:#8a6a3a;color-scheme:dark}}
@@ -29,7 +30,7 @@ textarea{width:100%;box-sizing:border-box;font:12px monospace}
 table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--bd);padding:4px 8px;text-align:left}
 .n{opacity:.7;font-size:13px}
 </style></head><body><div id="app">
-<h1>Лисьи норы <small>прототип · правила v1.5 + главная нора</small></h1>
+<h1>Лисьи норы <small id="ver"></small></h1>
 <div class="row"><button onclick="tab(0)">Партия</button><button onclick="tab(1)">Симуляция</button><button onclick="tab(2)">Архив</button><button onclick="tab(3)">База</button></div>
 <div class="row">Режим:
 <label><input id="rush" type="checkbox"> Лисий рывок</label>
@@ -56,22 +57,25 @@ table{border-collapse:collapse;width:100%}td,th{border:1px solid var(--bd);paddi
 <button onclick="sim()">Запустить</button></div>
 <div class="n">Расстановки случайные. Режим берётся из настроек выше. Стили: Бегун рвётся к норам, Агрессор ищет прыжки, Осторожный не подставляется, Жадный смотрит на 1 ход, Тактик, Стратег и Мастер просчитывают 2, 3 и 4 хода (считают медленнее). Симуляции в архив и базу не попадают.</div>
 <div id="out"></div></section>
-<section id="ar" hidden><div class="row"><select id="af" onchange="arch()"><option value="">Все партии</option><option value="loc">На одном устройстве</option><option value="bot">Против бота</option><option value="on">Онлайн</option></select><button onclick="arch()">Обновить</button><span id="asrc" class="n"></span></div><div id="al"></div>
+<section id="ar" hidden><div class="row"><select id="af" onchange="arch()"><option value="">Все партии</option><option value="loc">На одном устройстве</option><option value="bot">Против бота</option><option value="on">Онлайн</option></select><select id="av" onchange="arch()"></select><button onclick="arch()">Обновить</button><span id="asrc" class="n"></span></div><div id="al"></div>
 <h3>Экспорт и импорт</h3>
 <div class="n">Архив и база статистики строятся из одних и тех же партий. Экспорт кладёт их в поле ниже и предлагает сохранить файл. Для импорта вставьте в поле JSON или записи партий в нотации (со строками «Ч:» и «Б:», записи разделяйте пустой строкой) либо выберите файл. Партии из нотации помечаются как сыгранные на одном устройстве.</div>
 <div class="row"><button onclick="expo(1)">Экспорт JSON</button><button onclick="expo(0)">Экспорт записей (текст)</button><input type="file" id="fi" accept=".json,.txt" onchange="fimp(this)"></div>
 <textarea id="io" rows="7"></textarea>
 <div class="row"><button onclick="imp()">Импортировать</button><span id="ires" class="n"></span></div></section>
-<section id="sd" hidden><div class="row"><button onclick="stats()">Обновить</button><span id="ssrc" class="n"></span></div><div id="so"></div></section>
+<section id="sd" hidden><div class="row"><select id="sv" onchange="stats()"></select><button onclick="stats()">Обновить</button><span id="ssrc" class="n"></span></div><div id="so"></div></section>
 </div>
 <script>
 // ===== НАСТРОЙКИ SUPABASE: вставьте свои значения между кавычками =====
-const SB_URL='https://scrsnrujnqsagkviusjk.supabase.co',SB_KEY='sb_publishable_rVcqpETFkIRalUZzSp-m8w_taS0Pr6u';
+const SB_URL=(window.FOX_CONFIG||{}).url||'',SB_KEY=(window.FOX_CONFIG||{}).key||'';
 // ====================================================================
 const $=s=>document.querySelector(s),CL=[0,1,2,4,5,6],NM=i=>'abcdefg'[i%7]+((i/7|0)+1);
 const cells=(p,s)=>s.map((v,k)=>(p==1?v:6-v)*7+CL[k]);
 const rs=()=>{const a=[1,1,0,0,0,0];for(let i=5;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-const getOpt=()=>({rush:$('#rush').checked,main:1,lim:+$('#lim').value||15});
+const APP_V='0.4',VER={'1.5':{main:0},'1.5+main':{main:1}},CUR='1.5+main';
+const getOpt=()=>({rush:$('#rush').checked,main:1,lim:+$('#lim').value||15,v:CUR});
+$('#ver').textContent='версия сайта '+APP_V+' · правила '+CUR;
+['av','sv'].forEach(i=>$('#'+i).innerHTML='<option value="">Все версии правил</option>'+Object.keys(VER).map(v=>`<option value="${v}">Правила ${v}</option>`).join(''));
 function newG(s1,s2,o){const b=Array(49).fill(0);cells(1,s1).forEach(i=>b[i]=1);cells(2,s2).forEach(i=>b[i]=2);
  return{b,t:1,s:[0,0,0],last:[0,0,0],q:0,log:[],o,over:0,why:'',s1,s2}}
 const cl=g=>({...g,b:g.b.slice(),s:g.s.slice(),last:g.last.slice(),log:null});
@@ -105,7 +109,7 @@ function pick(g,L,ty){if(ty=='r')return L[Math.random()*L.length|0];const p=g.t,
   if(!h.over&&h.t!=p&&mv(h,h.t).some(x=>x.x))v-=B[2];
   if(v>best){best=v;bm=m}}return bm}
 const rec=g=>{let o=[];for(let i=0;i<g.log.length;i+=2)o.push((i/2+1)+'.'+g.log[i]+(g.log[i+1]?'-'+g.log[i+1]:''));
- return 'Режим: '+(g.o.rush?'Лисий рывок':'базовый')+', затишье '+g.o.lim+'\nЧ: '+cells(1,g.s1).map(NM).join(',')+'\nБ: '+cells(2,g.s2).map(NM).join(',')+'\n'+o.join(' ')+(g.over?' / '+g.s[1]+':'+g.s[2]:'')};
+ return 'Режим: '+(g.o.rush?'Лисий рывок':'базовый')+', затишье '+g.o.lim+(g.o.v&&g.o.v!=CUR?', правила '+g.o.v:'')+'\nЧ: '+cells(1,g.s1).map(NM).join(',')+'\nБ: '+cells(2,g.s2).map(NM).join(',')+'\n'+o.join(' ')+(g.over?' / '+g.s[1]+':'+g.s[2]:'')};
 //UI
 const sq=s=>'abcdefg'.indexOf(s[0])+(s[1]-1)*7;
 function posAt(g,k){const h=newG(g.s1,g.s2,g.o);h.log=[];for(const x of g.log){if(h.log.length>=k)break;if(x=='p')continue;const f=sq(x.slice(0,2)),t=sq(x.replace('x','').slice(2,4)),m=mv(h,h.t).find(m=>m.f==f&&m.t==t);if(!m)break;play(h,m)}return h}
@@ -130,7 +134,7 @@ function tab(k){['pl','sm','ar','sd'].forEach((x,i)=>$('#'+x).hidden=i!=k);if(k=
 const kn=k=>k=='h'?'человек':Object.hasOwn(BOTS,k)?BOTS[k][0].split(/[:(]/)[0].trim():'?',esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),MD={loc:'одно устройство',bot:'против бота',on:'онлайн'};
 const sb=window.supabase&&/^https?:/.test(SB_URL)?supabase.createClient(SB_URL,SB_KEY):null;
 const DB=sb?{collection:()=>({
- doc:id=>({set:async d=>{const{error}=await sb.from('games').upsert({id,...d,rules:'1.5+main'},{onConflict:'id',ignoreDuplicates:true});if(error)throw error}}),
+ doc:id=>({set:async d=>{const{error}=await sb.from('games').upsert({id,...d,rules:d.rules||CUR},{onConflict:'id',ignoreDuplicates:true});if(error)throw error}}),
  orderBy:()=>({limit:n=>({get:async()=>{let rows=[];for(let o=0;o<n;o+=1000){const{data,error}=await sb.from('games').select('*').order('ts',{ascending:false}).range(o,Math.min(o+999,n-1));if(error)throw error;rows=rows.concat(data);if(data.length<1000)break}return{docs:rows.map(x=>({id:x.id,data:()=>x}))}}})})})}:null;
 const ROOM=sb?{join:async name=>{const ch=sb.channel(name,{config:{broadcast:{self:false}}}),hs=[];
  ch.on('broadcast',{event:'g'},p=>hs.forEach(h=>h({isMe:false,data:p.payload})));
@@ -138,7 +142,7 @@ const ROOM=sb?{join:async name=>{const ch=sb.channel(name,{config:{broadcast:{se
  return{on:(t,h)=>hs.push(h),emit:(t,d)=>ch.send({type:'broadcast',event:'g',payload:d}),leave:()=>sb.removeChannel(ch)}}}:null;
 const getDb=async()=>DB;
 const hs=s=>{let h=5381;for(const c of s)h=(h*33^c.charCodeAt(0))>>>0;return h.toString(36)+s.length};
-async function saveGame(g){const r=rec(g),id=hs(r),d={ts:Date.now(),rec:r,md:g.md||'',b:(g.k||[])[0]||'h',w:(g.k||[])[1]||'h',s1:g.s[1],s2:g.s[2],why:g.why,n:g.log.length,ru:g.o.rush?1:0,lim:g.o.lim,mp:g.mp||0,f:g.log[0]||''};
+async function saveGame(g){const r=rec(g),id=hs(r),d={ts:Date.now(),rec:r,md:g.md||'',b:(g.k||[])[0]||'h',w:(g.k||[])[1]||'h',s1:g.s[1],s2:g.s[2],why:g.why,n:g.log.length,ru:g.o.rush?1:0,lim:g.o.lim,mp:g.mp||0,f:g.log[0]||'',rules:g.o.v||CUR};
  try{const db=await getDb();if(db){await db.collection('games').doc(id).set(d);return}}catch(e){}
  try{const a=JSON.parse(localStorage.fox||'[]');if(!a.some(x=>x.id==id)){a.push({id,...d});localStorage.fox=JSON.stringify(a.slice(-1500))}}catch(e){}}
 async function allGames(n=3000){try{const db=await getDb();if(db){const s=await db.collection('games').orderBy('ts','desc').limit(n).get();return{src:'db',a:s.docs.map(x=>({id:x.id,...x.data()}))}}}catch(e){}
@@ -147,9 +151,11 @@ let AR=[];
 function repl(t){const L=t.split('\n'),i1=L.findIndex(x=>/^\s*Ч:/.test(x)),i2=L.findIndex(x=>/^\s*Б:/.test(x));
  if(i1<0||i2<0)return{e:'нет строк расстановки «Ч:» и «Б:»'};
  const hd=L.slice(0,i1).join(' '),M=s=>s.match(/[a-g][1-7]/g)||[],so=(s,p)=>{const a=[0,0,0,0,0,0];M(s).forEach(x=>{const k=CL.indexOf('abcdefg'.indexOf(x[0]));if(k>=0)a[k]=p==1?x[1]-1:7-x[1]});return a},
- s1=so(L[i1],1),s2=so(L[i2],2),ok=(s,p)=>s.reduce((a,b)=>a+b)==2&&cells(p,s).map(NM).sort().join()==M(L[p==1?i1:i2]).sort().join();
+ s1=so(L[i1],1),s2=so(L[i2],2),ok=(s,p)=>s.reduce((a,b)=>a+b)==2&&cells(p,s).map(NM).sort().join()==M(L[p==1?i1:i2]).sort().join(),
+ vm=hd.match(/правила\s*(\S+)/),v=vm?vm[1]:CUR;
+ if(!Object.hasOwn(VER,v))return{e:'неизвестная версия правил '+v};
  if(!ok(s1,1)||!ok(s2,2))return{e:'расстановка не по правилам'};
- const g=newG(s1,s2,{rush:/рывок/.test(hd),main:1,lim:+(hd.match(/затишье\s*(\d+)/)||[0,15])[1]||15}),
+ const g=newG(s1,s2,{rush:/рывок/.test(hd),main:VER[v].main,v,lim:+(hd.match(/затишье\s*(\d+)/)||[0,15])[1]||15}),
  tk=L.slice(i2+1).join(' ').replace(/\/.*/,'').match(/[a-g][1-7]x?[a-g][1-7]/g)||[];
  for(const[j,x]of tk.entries()){if(g.over)return{e:'ходы после конца партии'};const f=sq(x.slice(0,2)),to=sq(x.slice(-2)),m=mv(g,g.t).find(m=>m.f==f&&m.t==to);if(!m)return{e:`ход ${j+1} «${x}» не по правилам`};play(g,m)}
  if(!g.over)return{e:'партия не закончена'};
@@ -160,7 +166,7 @@ async function put(list){const{src,a}=await allGames(20000),have=new Set(a.map(x
 async function imp(){const t=$('#io').value.trim(),R=$('#ires');if(!t){R.textContent='Вставьте JSON или записи партий в поле.';return}
  const out=[],er=[];let w=0;
  const add=(rc,o,n)=>{const r=repl(rc);if(r.e){er.push(n+': '+r.e);return}if(r.w)w++;const g=r.g;
-  out.push({ts:Date.now(),rec:rec(g),md:'loc',b:'h',w:'h',s1:g.s[1],s2:g.s[2],why:g.why,n:g.log.length,ru:g.o.rush?1:0,lim:g.o.lim,mp:g.mp||0,f:g.log[0]||'',...o})};
+  out.push({ts:Date.now(),rec:rec(g),md:'loc',b:'h',w:'h',s1:g.s[1],s2:g.s[2],why:g.why,n:g.log.length,ru:g.o.rush?1:0,lim:g.o.lim,mp:g.mp||0,f:g.log[0]||'',rules:g.o.v,...o})};
  if(/^[\[{]/.test(t)){let js;try{js=JSON.parse(t)}catch(e){R.textContent='Не удалось разобрать JSON.';return}
   const a=Array.isArray(js)?js:js&&js.games;if(!Array.isArray(a)){R.textContent='В JSON нет списка партий.';return}
   a.forEach((x,i)=>{if(x&&typeof x.rec=='string')add(x.rec,{ts:+x.ts||Date.now(),md:Object.hasOwn(MD,x.md)?x.md:'loc',b:x.b=='h'||Object.hasOwn(BOTS,x.b)?x.b:'h',w:x.w=='h'||Object.hasOwn(BOTS,x.w)?x.w:'h'},'№'+(i+1));else er.push('№'+(i+1)+': нет записи')})}
@@ -168,24 +174,37 @@ async function imp(){const t=$('#io').value.trim(),R=$('#ires');if(!t){R.textCon
  let ok=0,dup=0;try{if(out.length)[ok,dup]=await put(out)}catch(e){R.textContent='Не удалось записать: '+(e.message||e.code||e);return}
  R.textContent=`Добавлено: ${ok}, уже были: ${dup}, ошибок: ${er.length}${w?', расхождений в счёте: '+w:''}.`+(er.length?' '+er.slice(0,3).join('; '):'');arch()}
 async function expo(js){const{a}=await allGames(20000),L=a.filter(x=>typeof x.rec=='string').reverse();
- const s=js?JSON.stringify({fox:1,games:L.map(({ts,rec,md,b,w,s1,s2,why,n,ru,lim,mp,f})=>({ts,rec,md,b,w,s1,s2,why,n,ru,lim,mp,f}))},null,1):L.map(x=>x.rec).join('\n\n');
+ const s=js?JSON.stringify({fox:1,games:L.map(({ts,rec,md,b,w,s1,s2,why,n,ru,lim,mp,f,rules})=>({ts,rec,md,b,w,s1,s2,why,n,ru,lim,mp,f,rules:rules||CUR}))},null,1):L.map(x=>x.rec).join('\n\n');
  $('#io').value=s;$('#ires').textContent='Экспортировано партий: '+L.length+'.';
  try{if(L.length){const u=URL.createObjectURL(new Blob([s],{type:'text/plain'})),a=document.createElement('a');a.href=u;a.download=js?'lisyi-nory-games.json':'lisyi-nory-games.txt';a.click();setTimeout(()=>URL.revokeObjectURL(u),9e3)}}catch(e){}}
 function fimp(el){const f=el.files[0];if(f)f.text().then(s=>{$('#io').value=s;$('#ires').textContent='Файл загружен в поле, нажмите «Импортировать».'})}
-async function arch(){const{src,a}=await allGames(),f=$('#af').value;AR=a.filter(x=>!f||x.md==f).slice(0,300);$('#asrc').textContent=(src=='db'?'Общая база':'Только этот браузер')+', партий: '+a.length;
- $('#al').innerHTML=AR.length?'<table><tr><th>Когда</th><th>Кто</th><th>Счёт</th><th>Ходов</th><th></th></tr>'+AR.map((x,i)=>`<tr><td>${new Date(+x.ts).toLocaleString('ru',{dateStyle:'short',timeStyle:'short'})}<br><span class="n">${Object.hasOwn(MD,x.md)?MD[x.md]:''}${x.ru?', рывок':''}</span></td><td>Ч: ${kn(x.b)}<br>Б: ${kn(x.w)}</td><td>${+x.s1}:${+x.s2}</td><td>${Math.ceil(+x.n/2)}</td><td><button onclick="openG(${i})">Открыть</button></td></tr>`).join('')+'</table>':'Партий пока нет.'}
+const r1=x=>x.s1>x.s2?1:x.s2>x.s1?2:0,pc=(x,n)=>n?(100*x/n).toFixed(0)+'%':'—',av=(l,k)=>l.length?(l.reduce((s,x)=>s+(+x[k]||0),0)/l.length).toFixed(1):'—';
+const T=(h,r)=>'<table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+r.join('')+'</table>';
+const GH=(side,first)=>[first||'Группа','Партий',...(side?['Победы','Ничьи','Поражения']:['Чёрные','Белые','Ничьи']),side?'Ср. счёт (свои:чужие)':'Ср. счёт (Ч:Б)'];
+function grow(t,l,side){const n=l.length;if(!n)return'';const w=[0,0,0];l.forEach(x=>w[r1(x)]++);
+ const a=side==2?'s2':'s1',b=side==2?'s1':'s2',c=side==2?[w[2],w[0],w[1]]:side==1?[w[1],w[0],w[2]]:[w[1],w[2],w[0]];
+ return `<tr><td>${t}</td><td>${n}</td><td>${pc(c[0],n)}</td><td>${pc(c[1],n)}</td><td>${pc(c[2],n)}</td><td>${av(l,a)}:${av(l,b)}</td></tr>`}
+async function arch(){const{src,a}=await allGames(),f=$('#af').value,fv=$('#av').value,F=a.filter(x=>(!f||x.md==f)&&(!fv||(x.rules||CUR)==fv));AR=F.slice(0,300);
+ $('#asrc').textContent=(src=='db'?'Общая база':'Только этот браузер')+', партий: '+a.length+(F.length<a.length?', в выборке: '+F.length:'')+(F.length>300?' (показаны последние 300)':'');
+ $('#al').innerHTML=AR.length?T(GH(0,'Выборка'),[grow('Все в списке',F,0)])+'<br>'+'<table><tr><th>Когда</th><th>Кто</th><th>Правила</th><th>Счёт</th><th>Ходов</th><th></th></tr>'+AR.map((x,i)=>`<tr><td>${new Date(+x.ts).toLocaleString('ru',{dateStyle:'short',timeStyle:'short'})}<br><span class="n">${Object.hasOwn(MD,x.md)?MD[x.md]:''}${x.ru?', рывок':''}</span></td><td>Ч: ${kn(x.b)}<br>Б: ${kn(x.w)}</td><td>${esc(x.rules||CUR)}</td><td>${+x.s1}:${+x.s2}</td><td>${Math.ceil(+x.n/2)}</td><td><button onclick="openG(${i})">Открыть</button></td></tr>`).join('')+'</table>':'Партий пока нет.'}
 function openG(i){const x=AR[i];if(!x||typeof x.rec!='string')return;if(G&&!G.over&&G.log.length){$('#asrc').textContent='Сначала завершите текущую партию или нажмите «Новая партия».';return}
- if(mode==3&&!room)setMode(1);$('#rec').value=x.rec;tab(0);load();rvTo(0)}
-async function stats(){const{src,a}=await allGames();$('#ssrc').textContent=(src=='db'?'Общая база':'Только этот браузер')+', партий: '+a.length;
- if(!a.length){$('#so').textContent='Пока нет сыгранных партий. Сыграйте партию, и она появится здесь.';return}
- const r1=x=>x.s1>x.s2?1:x.s2>x.s1?2:0,p=(x,n)=>n?(100*x/n).toFixed(0)+'%':'—',T=(h,r)=>`<table><tr>${h.map(x=>'<th>'+x+'</th>').join('')}</tr>${r.join('')}</table>`,
- g3=(t,l)=>{const w=[0,0,0];l.forEach(x=>w[r1(x)]++);const n=l.length;return n?`<tr><td>${t}</td><td>${n}</td><td>${p(w[1],n)}</td><td>${p(w[2],n)}</td><td>${p(w[0],n)}</td></tr>`:''},
- av=k=>(a.reduce((s,x)=>s+(+x[k]||0),0)/a.length).toFixed(1),K=Object.create(null),WY=Object.create(null),F=Object.create(null);
- a.forEach(x=>{const r=r1(x);[[x.b,1],[x.w,2]].forEach(([k,c])=>{k=Object.hasOwn(BOTS,k)||k=='h'?k:'?';const o=K[k]=K[k]||[0,0,0,0];o[0]++;o[r==c?1:r?3:2]++});WY[x.why]=(WY[x.why]||0)+1;if(x.f)(F[x.f]=F[x.f]||[]).push(x)});
- $('#so').innerHTML='<h3>Результаты</h3>'+T(['Группа','Партий','Чёрные','Белые','Ничьи'],[g3('Все',a),...Object.keys(MD).map(m=>g3(MD[m],a.filter(x=>x.md==m))),g3('С рывком',a.filter(x=>x.ru)),g3('Без рывка',a.filter(x=>!x.ru))])
- +`<p class="n">В среднем: ${av('n')} полуходов, счёт ${av('s1')}:${av('s2')}, очков от последнего броска ${av('mp')}.</p><h3>Как заканчивались</h3>`+T(['Причина','Партий'],Object.entries(WY).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`))
- +'<h3>Игроки и боты</h3>'+T(['Кто','Партий','Победы','Ничьи','Поражения'],Object.entries(K).map(([k,o])=>`<tr><td>${kn(k)}</td><td>${o[0]}</td><td>${p(o[1],o[0])}</td><td>${p(o[2],o[0])}</td><td>${p(o[3],o[0])}</td></tr>`))
- +'<h3>Первые ходы Чёрных</h3>'+T(['Ход','Партий','Чёрные','Белые','Ничьи'],Object.entries(F).sort((x,y)=>y[1].length-x[1].length).slice(0,8).map(([k,l])=>g3(esc(k),l)))}
+ if(mode==3&&!room)setMode(1);$('#rec').value=x.rec;tab(0);load();if(G&&G.o.v!=CUR)msg='Партия сыграна по правилам версии '+G.o.v+'.';rvTo(0)}
+function statHtml(A){
+ const by=f=>{const m=Object.create(null);A.forEach(x=>{const k=f(x);if(k)(m[k]=m[k]||[]).push(x)});return Object.entries(m).sort((p,q)=>q[1].length-p[1].length)},
+ wf=x=>{const m=String(x.rec).match(/\b1\.[^\s-]+-([a-g][1-7]x?[a-g][1-7])/);return m?m[1]:''},
+ su=(x,c)=>{const ln=String(x.rec).split('\n').find(s=>s.trim().startsWith(c+':'))||'';return(ln.match(/[a-g][1-7]/g)||[]).filter(s=>s[1]==(c=='Ч'?'2':'6')).map(s=>s[0].toUpperCase()).sort().join(', ')},
+ K=Object.create(null);
+ A.forEach(x=>{const r=r1(x);[[x.b,1],[x.w,2]].forEach(([k,c])=>{k=Object.hasOwn(BOTS,k)||k=='h'?k:'?';const o=K[k]=K[k]||[0,0,0,0,0,0];o[0]++;o[r==c?1:r?3:2]++;o[4]+=(c==1?+x.s1:+x.s2)||0;o[5]+=(c==1?+x.s2:+x.s1)||0})});
+ return '<h3>Результаты</h3>'+T(GH(0),[grow('Все',A,0),...Object.keys(MD).map(m=>grow(MD[m],A.filter(x=>x.md==m),0)),grow('С рывком',A.filter(x=>x.ru),0),grow('Без рывка',A.filter(x=>!x.ru),0),...Object.keys(VER).map(v=>grow('Правила '+v,A.filter(x=>(x.rules||CUR)==v),0))])
+ +`<p class="n">В среднем: ${av(A,'n')} полуходов, очков от последнего броска ${av(A,'mp')}.</p><h3>Как заканчивались</h3>`+T(['Причина','Партий'],by(x=>x.why||'?').map(([k,l])=>`<tr><td>${esc(k)}</td><td>${l.length}</td></tr>`))
+ +'<h3>Игроки и боты</h3>'+T(GH(1,'Кто'),Object.entries(K).map(([k,o])=>`<tr><td>${kn(k)}</td><td>${o[0]}</td><td>${pc(o[1],o[0])}</td><td>${pc(o[2],o[0])}</td><td>${pc(o[3],o[0])}</td><td>${(o[4]/o[0]).toFixed(1)}:${(o[5]/o[0]).toFixed(1)}</td></tr>`))
+ +'<h3>Первые ходы Чёрных</h3>'+T(GH(1,'Ход'),by(x=>x.f).slice(0,10).map(([k,l])=>grow(esc(k),l,1)))
+ +'<h3>Первые ходы Белых (ответ на ход Чёрных)</h3>'+T(GH(2,'Ход'),by(wf).slice(0,10).map(([k,l])=>grow(esc(k),l,2)))
+ +'<h3>Стартовые позиции Чёрных</h3><p class="n">Столбцы, в которых лисы стоят на втором ряду; остальные стоят на ближнем.</p>'+T(GH(1,'2-й ряд'),by(x=>su(x,'Ч')).map(([k,l])=>grow(esc(k),l,1)))
+ +'<h3>Стартовые позиции Белых</h3>'+T(GH(2,'2-й ряд'),by(x=>su(x,'Б')).map(([k,l])=>grow(esc(k),l,2)))}
+async function stats(){const{src,a}=await allGames(),fv=$('#sv').value,A=a.filter(x=>!fv||(x.rules||CUR)==fv);
+ $('#ssrc').textContent=(src=='db'?'Общая база':'Только этот браузер')+', партий: '+A.length+(fv?' (правила '+fv+')':'');
+ $('#so').innerHTML=A.length?statHtml(A):'Пока нет сыгранных партий. Сыграйте партию, и она появится здесь.'}
 function R(){if(G&&G.over&&!G.sv){G.sv=1;saveGame(G)}const fl=me==2,V=G&&rv>=0?posAt(G,rv):G,b=G&&st=='play'?V.b.slice():Array(49).fill(0);
  if(st=='set'){const p=me||sp;cells(p,S[p]).forEach(i=>b[i]=p)}
  const T=new Set(sel>=0&&G&&!G.over&&rv<0?mv(G,G.t).filter(m=>m.f==sel).map(m=>m.t):[]),LM=new Set(st=='play'?lmv(V):[]);let h='';
@@ -220,14 +239,16 @@ function newg(){reset();room&&room.emit('g',{t:'new'});R()}
 function go(){if(rdy&&orf&&!sent&&room){sent=1;room.emit('g',{t:'set',s:S[me]})}
  if(sent&&oset&&!G){start(me==1?S[me]:oset,me==1?oset:S[me])}}
 function load(){const L=$('#rec').value.split('\n'),so=(s,p)=>{const a=[0,0,0,0,0,0];(s.match(/[a-g][1-7]/g)||[]).forEach(x=>{const k=CL.indexOf('abcdefg'.indexOf(x[0]));if(k>=0)a[k]=p==1?x[1]-1:7-x[1]});return a};
- $('#rush').checked=/рывок/.test(L[0]);$('#lim').value=(L[0].match(/затишье (\d+)/)||[0,15])[1];
- reset();S[1]=so(L[1]||'',1);S[2]=so(L[2]||'',2);start(S[1],S[2]);
+ const hd=L[0]||'',vm=hd.match(/правила\s*(\S+)/),v=vm?vm[1]:CUR;
+ if(!Object.hasOwn(VER,v)){msg='Неизвестная версия правил: '+v;return R()}
+ $('#rush').checked=/рывок/.test(hd);$('#lim').value=(hd.match(/затишье (\d+)/)||[0,15])[1];
+ reset();S[1]=so(L[1]||'',1);S[2]=so(L[2]||'',2);start(S[1],S[2]);G.o.main=VER[v].main;G.o.v=v;
  const tk=L.slice(3).join(' ').replace(/\/.*/,'').match(/[a-g][1-7]x?[a-g][1-7]/g)||[];
  for(const x of tk){const f=('abcdefg'.indexOf(x[0]))+(x[1]-1)*7,y=x.slice(-2),t=('abcdefg'.indexOf(y[0]))+(y[1]-1)*7;
   const m=mv(G,G.t).find(m=>m.f==f&&m.t==t);if(!m){msg='Ход '+x+' не найден по правилам.';break}play(G,m)}if(G.over)G.sv=1;
  R()}
 async function conn(){const R0=ROOM;
- if(!R0){$('#on').textContent=''+(window.supabase?'Онлайн недоступен: в начале файла не заданы адрес и ключ Supabase.':'Не загрузилась библиотека Supabase (нет интернета или она заблокирована).')+'';return}
+ if(!R0){$('#on').textContent=''+(window.supabase?'Онлайн недоступен: в файле config.js не заданы адрес и ключ Supabase.':'Не загрузилась библиотека Supabase (нет интернета или она заблокирована).')+'';return}
  const code=$('#code').value.trim()||Math.random().toString(36).slice(2,6);$('#code').value=code;
  me=+$('#col').value;reset();try{room=await R0.join('fox-'+code)}catch(e){$('#on').textContent='Не удалось подключиться: '+e.message+'. Проверьте адрес проекта и публичный ключ.';return}room.on('g',onMsg);
  room.emit('g',{t:'hello',c:me});$('#on').textContent=`Комната ${code}, вы за ${me==1?'Чёрных':'Белых'}. Сообщите код сопернику.`;R()}
@@ -241,17 +262,15 @@ function onMsg(e){if(e.isMe)return;const d=e.data||{};
  else if(d.t=='set'&&Array.isArray(d.s)){oset=d.s.slice(0,6).map(v=>v?1:0);go()}
  else if(d.t=='new'){reset();R()}
  else if(d.t=='m'&&G&&!G.over){if(d.n==G.log.length){const m=mv(G,G.t).find(m=>m.f==d.f&&m.t==d.to);if(m){play(G,m);sel=-1;R()}}else if(d.n>G.log.length)sync()}}
-async function sim(){const o=getOpt(),n=+$('#n').value||300,ba=$('#ba').value,bb=$('#bb').value,w=[0,0,0],W={};let pl=0,s1=0,s2=0,mp=0,cap=0;
+async function sim(){const o=getOpt(),n=+$('#n').value||300,ba=$('#ba').value,bb=$('#bb').value,L=[];let pl=0,mp=0;
  $('#out').textContent='Считаю…';
  for(let k=0;k<n;k++){const g=newG(rs(),rs(),o);let c=0;while(!g.over&&c++<500)play(g,pick(g,mv(g,g.t),g.t==1?ba:bb));
   if(!g.over)fin(g,0,'не закончилась за 500 ходов');
-  w[g.s[1]>g.s[2]?1:g.s[2]>g.s[1]?2:0]++;pl+=g.log.length;s1+=g.s[1];s2+=g.s[2];mp+=g.mp;W[g.why]=(W[g.why]||0)+1;
+  L.push({s1:g.s[1],s2:g.s[2],why:g.why});pl+=g.log.length;mp+=g.mp;
   if(k%10==9)await new Promise(r=>setTimeout(r))}
- const p=x=>(100*x/n).toFixed(1)+'%';
- $('#out').innerHTML=`<table><tr><th>Победы Чёрных</th><td>${w[1]} (${p(w[1])})</td></tr><tr><th>Победы Белых</th><td>${w[2]} (${p(w[2])})</td></tr><tr><th>Ничьи</th><td>${w[0]} (${p(w[0])})</td></tr>
- <tr><th>Средний счёт</th><td>${(s1/n).toFixed(2)} : ${(s2/n).toFixed(2)}</td></tr><tr><th>Средняя длина (полуходов)</th><td>${(pl/n).toFixed(1)}</td></tr>
- <tr><th>Очков от последнего броска в среднем</th><td>${(mp/n).toFixed(2)}</td></tr>
- <tr><th>Как заканчивались</th><td>${Object.entries(W).map(([k,v])=>k+': '+p(v)).join('<br>')}</td></tr></table>
+ const W=[...new Set(L.map(x=>x.why))];
+ $('#out').innerHTML=T(GH(0,'Группа'),[grow('Все партии',L,0),...W.map(w=>grow(esc(w),L.filter(x=>x.why==w),0))])
+ +`<p class="n">Правила: ${CUR}. В среднем ${(pl/n).toFixed(1)} полуходов, очков от последнего броска ${(mp/n).toFixed(2)}.</p>
  <p class="n">Боты слабее людей, поэтому смотрите на перекос и на причины окончания, а не на «настоящий» баланс.</p>`}
 R();
 </script></body></html>
