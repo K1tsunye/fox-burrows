@@ -2,7 +2,7 @@
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Лисьи норы — прототип v1.5</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6efe0;--fg:#2a2019;--cd:#fffaf0;--bd:#b58f4a;color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a2019;--fg:#f3e9d2;--cd:#372b22;--bd:#8a6a3a;color-scheme:dark}}
@@ -12,6 +12,7 @@ body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-
 h1{font-size:20px;margin:4px 0}h1 small{font-weight:400;opacity:.6;font-size:12px}
 button,input,select,textarea{font:inherit;color:inherit;background:var(--cd);border:1px solid var(--bd);border-radius:6px;padding:5px 9px}
 button{cursor:pointer}button:disabled{opacity:.4}
+[hidden]{display:none!important}
 .row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:8px 0}
 #bd{display:grid;grid-template:repeat(7,minmax(0,1fr))/repeat(7,minmax(0,1fr));width:100%;aspect-ratio:1;border:3px solid var(--bd);box-sizing:border-box;overflow:hidden}
 .c{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;min-height:0;overflow:hidden}
@@ -226,9 +227,9 @@ function load(){const L=$('#rec').value.split('\n'),so=(s,p)=>{const a=[0,0,0,0,
   const m=mv(G,G.t).find(m=>m.f==f&&m.t==t);if(!m){msg='Ход '+x+' не найден по правилам.';break}play(G,m)}if(G.over)G.sv=1;
  R()}
 async function conn(){const R0=ROOM;
- if(!R0){$('#on').textContent='Онлайн недоступен: в начале файла не заданы адрес и ключ Supabase.';return}
+ if(!R0){$('#on').textContent=''+(window.supabase?'Онлайн недоступен: в начале файла не заданы адрес и ключ Supabase.':'Не загрузилась библиотека Supabase (нет интернета или она заблокирована).')+'';return}
  const code=$('#code').value.trim()||Math.random().toString(36).slice(2,6);$('#code').value=code;
- me=+$('#col').value;reset();try{room=await R0.join('fox-'+code)}catch(e){$('#on').textContent='Не удалось подключиться: '+e.message;return}room.on('g',onMsg);
+ me=+$('#col').value;reset();try{room=await R0.join('fox-'+code)}catch(e){$('#on').textContent='Не удалось подключиться: '+e.message+'. Проверьте адрес проекта и публичный ключ.';return}room.on('g',onMsg);
  room.emit('g',{t:'hello',c:me});$('#on').textContent=`Комната ${code}, вы за ${me==1?'Чёрных':'Белых'}. Сообщите код сопернику.`;R()}
 function sync(){room&&room.emit('g',{t:'need'})}
 function onMsg(e){if(e.isMe)return;const d=e.data||{};
