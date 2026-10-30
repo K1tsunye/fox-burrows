@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Опрос — Лисьи норы</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <style>
+    :root {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      --bg: #f6efe0;
+      --fg: #2a2019;
+      --cd: #fffaf0;
+      --bd: #b58f4a;
+      --ac: #f2b84b;
+      color-scheme: light
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #2a2019;
+        --fg: #f3e9d2;
+        --cd: #372b22;
+        --bd: #8a6a3a;
+        color-scheme: dark
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #2a2019;
+      --fg: #f3e9d2;
+      --cd: #372b22;
+      --bd: #8a6a3a;
+      color-scheme: dark
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 15px/1.4 system-ui, sans-serif
+    }
+
+    #app {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 12px
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 4px 0 2px
+    }
+
+    a {
+      color: inherit
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+      color: inherit;
+      background: var(--cd);
+      border: 1px solid var(--bd);
+      border-radius: 6px;
+      padding: 5px 9px
+    }
+
+    button {
+      cursor: pointer
+    }
+
+    [hidden] {
+      display: none !important
+    }
+
+    .n {
+      opacity: .7;
+      font-size: 13px
+    }
+
+    fieldset.q {
+      border: 1px solid var(--bd);
+      border-radius: 10px;
+      background: var(--cd);
+      margin: 12px 0;
+      padding: 12px 14px
+    }
+
+    fieldset.q legend {
+      font-weight: 600;
+      padding: 0 6px
+    }
+
+    .opts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px
+    }
+
+    .opt {
+      position: relative;
+      cursor: pointer
+    }
+
+    .opt input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      margin: 0;
+      cursor: pointer
+    }
+
+    .opt span {
+      display: block;
+      padding: 8px 14px;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      background: var(--bg)
+    }
+
+    .opt input:checked+span {
+      background: var(--ac);
+      color: #2a2019;
+      font-weight: 600
+    }
+
+    .opt input:focus-visible+span {
+      outline: 2px solid var(--fg);
+      outline-offset: 2px
+    }
+
+    input[type=range] {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: none;
+      accent-color: var(--ac);
+      margin: 10px 0 2px
+    }
+
+    .scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      opacity: .65
+    }
+
+    #rv {
+      display: inline-block;
+      min-width: 2.2em;
+      text-align: center;
+      font-weight: 700;
+      font-size: 18px
+    }
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 10px;
+      resize: vertical;
+      min-height: 90px
+    }
+
+    .err {
+      color: #c0392b;
+      font-size: 13px;
+      margin-top: 6px
+    }
+
+    .send {
+      display: block;
+      width: 100%;
+      margin: 16px 0;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      background: var(--ac);
+      color: #2a2019;
+      border: 2px solid var(--bd)
+    }
+
+    .send:disabled {
+      opacity: .6;
+      cursor: default
+    }
+
+    .hp {
+      position: absolute;
+      left: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden
+    }
+
+    .thanks {
+      text-align: center;
+      padding: 28px 12px
+    }
+
+    .thanks b {
+      font-size: 20px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <p class="n"><a href="index.html">← Вернуться к игре</a></p>
+
+    <div id="thanks" class="thanks" hidden>
+      <b>Спасибо за ответы! 🦊</b>
+      <p>Они помогут сделать игру лучше.</p>
+      <p><a href="index.html">Вернуться к игре</a></p>
+    </div>
+
+    <div id="main">
+      <h1>Опрос об игре</h1>
+      <div class="n">Шесть коротких вопросов. Ответы анонимны и видны только администратору игры.</div>
+      <div id="top" class="err" role="alert" hidden></div>
+
+      <form id="f" autocomplete="off" novalidate>
+        <div class="hp" aria-hidden="true">
+          <label>Не заполняйте это поле <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+        </div>
+
+        <fieldset class="q" id="q1">
+          <legend>1. С кем вы играли?</legend>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="who" value="bot"><span>С ботом</span></label>
+            <label class="opt"><input type="radio" name="who" value="online"><span>В онлайне</span></label>
+            <label class="opt"><input type="radio" name="who" value="local"><span>На одном устройстве</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="q" id="q2">
+          <legend>2. Как вам концепт игры?</legend>
+          <div class="n">Передвиньте ползунок (1 — совсем не понравился, 10 — отлично). Оценка: <span id="rv">—</span></div>
+          <input type="range" id="rr" min="1" max="10" step="1" value="5" aria-label="Оценка концепта от 1 до 10">
+          <div class="scale" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+          <input type="hidden" id="rate" value="">
+        </fieldset>
+
+        <fieldset class="q" id="q3">
+          <legend>3. Зацепил ли вас процесс игры?</legend>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="hook" value="yes"><span>Да</span></label>
+            <label class="opt"><input type="radio" name="hook" value="no"><span>Нет</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="q" id="q4">
+          <legend>4. Возникли ли какие-то проблемы в процессе игры?</legend>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="prob" value="yes"><span>Да</span></label>
+            <label class="opt"><input type="radio" name="prob" value="no"><span>Нет</span></label>
+          </div>
+          <textarea id="prob_text" maxlength="2000" placeholder="Опишите, что именно пошло не так" hidden></textarea>
+        </fieldset>
+
+        <fieldset class="q" id="q5">
+          <legend>5. Сыграли бы ещё?</legend>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="again" value="yes"><span>Да</span></label>
+            <label class="opt"><input type="radio" name="again" value="no"><span>Нет</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="q" id="q6">
+          <legend>6. Есть ли у вас замечания или идеи по улучшению игры?</legend>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="idea" value="yes"><span>Да</span></label>
+            <label class="opt"><input type="radio" name="idea" value="no"><span>Нет</span></label>
+          </div>
+          <textarea id="idea_text" maxlength="2000" placeholder="Напишите ваши замечания или идеи" hidden></textarea>
+        </fieldset>
+
+        <button type="submit" class="send" id="send">Отправить</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Проверка и подготовка ответа (без работы со страницей)
+    const MAX_TEXT = 2000;
+    function cleanText(s) {
+      s = String(s || '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim();
+      return Array.from(s).slice(0, MAX_TEXT).join('');
+    }
+    const yn = v => v === 'yes' ? true : v === 'no' ? false : null;
+    function checkSurvey(a) {
+      const err = {};
+      if (!['bot', 'online', 'local'].includes(a.who)) err.q1 = 'Выберите, с кем вы играли.';
+      const r = parseInt(a.rate, 10);
+      if (!(r >= 1 && r <= 10)) err.q2 = 'Оцените концепт ползунком.';
+      [['hook', 'q3'], ['prob', 'q4'], ['again', 'q5'], ['idea', 'q6']].forEach(([k, q]) => {
+        if (yn(a[k]) === null) err[q] = 'Выберите ответ.';
+      });
+      const pt = cleanText(a.probText), it = cleanText(a.ideaText);
+      if (a.prob === 'yes' && !pt) err.q4 = 'Опишите, какие были проблемы.';
+      if (a.idea === 'yes' && !it) err.q6 = 'Напишите ваши замечания или идеи.';
+      if (Object.keys(err).length) return { err };
+      return {
+        row: {
+          who: a.who, rate: r, hook: yn(a.hook),
+          problems: yn(a.prob), problems_text: a.prob === 'yes' ? pt : null,
+          play_again: yn(a.again),
+          ideas: yn(a.idea), ideas_text: a.idea === 'yes' ? it : null
+        }
+      };
+    }
+  </script>
+  <script>
+    (function () {
+      const $ = s => document.querySelector(s), f = $('#f'), btn = $('#send');
+      const rr = $('#rr'), rate = $('#rate'), rv = $('#rv'), top = $('#top');
+
+      const CFG = window.FOX_CONFIG || {};
+      const sb = (window.supabase && /^https?:\/\//.test(CFG.url || '')) ? supabase.createClient(CFG.url, CFG.key) : null;
+
+      // Ползунок считается «отвеченным» только после того, как игрок к нему прикоснулся
+      const setRate = () => { rate.value = rr.value; rv.textContent = rr.value; const e = $('#q2 .err'); if (e) e.remove(); };
+      ['input', 'change', 'pointerup', 'keydown', 'touchend'].forEach(ev => rr.addEventListener(ev, setRate));
+
+      // Текстовые поля появляются только при ответе «Да»
+      function bind(name, box) {
+        const t = $('#' + box);
+        const upd = () => { t.hidden = f.querySelector('input[name=' + name + ']:checked')?.value !== 'yes'; };
+        f.querySelectorAll('input[name=' + name + ']').forEach(r => r.addEventListener('change', upd));
+        upd();
+      }
+      bind('prob', 'prob_text'); bind('idea', 'idea_text');
+
+      const val = n => f.querySelector('input[name=' + n + ']:checked')?.value || '';
+      const showTop = msg => { top.textContent = msg; top.hidden = !msg; };
+      const finish = () => { $('#main').hidden = true; $('#thanks').hidden = false; window.scrollTo(0, 0); };
+
+      f.addEventListener('submit', async e => {
+        e.preventDefault();
+        f.querySelectorAll('.err.js').forEach(x => x.remove());
+        showTop('');
+        // Ловушка для ботов: поле скрыто от людей. Если заполнено, молча «принимаем» и ничего не отправляем.
+        if (f.elements.website.value) { finish(); return; }
+
+        const r = checkSurvey({
+          who: val('who'), rate: rate.value, hook: val('hook'), prob: val('prob'),
+          again: val('again'), idea: val('idea'),
+          probText: $('#prob_text').value, ideaText: $('#idea_text').value
+        });
+        if (r.err) {
+          let first = null;
+          Object.entries(r.err).forEach(([q, msg]) => {
+            const d = document.createElement('div'); d.className = 'err js'; d.textContent = msg;
+            $('#' + q).appendChild(d); first = first || $('#' + q);
+          });
+          showTop('Проверьте, пожалуйста, ответы: не на все вопросы есть ответ.');
+          first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (!sb) { showTop('Опрос пока недоступен: не настроено подключение к базе. Сообщите об этом администратору игры.'); return; }
+
+        btn.disabled = true; btn.textContent = 'Отправляем…';
+        try {
+          const { error } = await sb.from('survey_responses').insert(r.row);
+          if (error) throw error;
+          finish();
+        } catch (x) {
+          console.error(x);
+          const many = x && (x.code === 'P0001' || /too many/i.test(x.message || ''));
+          showTop(many ? 'Сейчас приходит слишком много ответов подряд. Попробуйте ещё раз через минуту.'
+            : 'Не удалось отправить ответы. Проверьте интернет и попробуйте ещё раз чуть позже.');
+          btn.disabled = false; btn.textContent = 'Отправить';
+        }
+      });
+    })();
+  </script>
+</body>
+
+</html>
